@@ -64,7 +64,11 @@ def health() -> dict:
     except (FileNotFoundError, subprocess.TimeoutExpired):
         version = "not installed"
     tex_cache = Path("/root/.cache/texlive")
-    tex_warmed = tex_cache.exists() and any(tex_cache.rglob("*"))
+    tex_warmed = False
+    try:
+        tex_warmed = tex_cache.exists() and any(tex_cache.rglob("*"))
+    except PermissionError:
+        tex_warmed = tex_cache.exists()
     degraded = version == "not installed"
     return {
         "status": "degraded" if degraded else "ok",

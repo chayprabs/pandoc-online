@@ -9,9 +9,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     texlive-xetex \
     texlive-luatex \
     texlive-latex-base \
+    texlive-latex-recommended \
     wkhtmltopdf \
     curl \
     ca-certificates \
+    xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Typst (optional fast PDF engine)
