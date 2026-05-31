@@ -12,10 +12,7 @@ PANDOC_FORBIDDEN_ARGS = {"--shell-escape", "-shell-escape"}
 
 ALLOWED_FILTERS = frozenset(
     {
-        "include-files",
-        "table-columns",
         "pagebreak",
-        "citeproc",
     }
 )
 

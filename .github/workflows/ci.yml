@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile || pnpm install
+      - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @pandoc-online/shared-types build
       - run: pnpm --filter @pandoc-online/shared-types test
       - run: pnpm --filter @pandoc-online/web typecheck

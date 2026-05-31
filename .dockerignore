@@ -1,0 +1,16 @@
+.git
+.gitignore
+**/.next
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+**/.venv
+**/venv
+coverage
+*.log
+.env
+.env.*
+PRODUCT_REQUIREMENTS.md
+IMPLEMENTATION_HANDOFF.md
+CODEX_GOAL_PROMPT.md
+RELEASE_QUALIFICATION_CHECKLIST.md

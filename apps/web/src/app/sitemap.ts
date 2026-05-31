@@ -13,7 +13,7 @@ const routes = [
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://github.com/chayprabs/pandoc-online";
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   return routes.map((path) => ({
     url: `${base}${path}`,
     lastModified: new Date(),

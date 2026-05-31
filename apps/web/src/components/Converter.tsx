@@ -102,9 +102,16 @@ export function Converter({
   const onFileDrop = useCallback(async (files: FileList | null) => {
     if (!files?.length) return;
     const file = files[0];
-    const text = await file.text();
-    setContent(text);
-    setSourceFormat(detectFormat(file.name, text));
+    const fmt = detectFormat(file.name, "");
+    const binary = ["docx", "odt", "epub"].includes(fmt);
+    if (binary) {
+      setContent(await fileToBase64(file));
+      setSourceFormat(fmt);
+    } else {
+      const text = await file.text();
+      setContent(text);
+      setSourceFormat(detectFormat(file.name, text));
+    }
   }, []);
 
   const handleConvert = async () => {
@@ -114,8 +121,12 @@ export function Converter({
     setCommand("");
     setWarnings([]);
     try {
+      const isBinary = ["docx", "odt", "epub"].includes(sourceFormat);
       const job: ConvertJob = {
-        source: { format: sourceFormat, content },
+        source: {
+          format: sourceFormat,
+          content: isBinary && !content.startsWith("base64:") ? `base64:${content}` : content,
+        },
         target: {
           format: targetFormat,
           engine: targetFormat === "pdf" ? pdfEngine : undefined,

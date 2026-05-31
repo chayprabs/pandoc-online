@@ -1,4 +1,6 @@
 import base64
+import binascii
+import os
 import re
 import shutil
 import subprocess
@@ -78,10 +80,14 @@ def build_math_args(math: str | None, target_fmt: str) -> list[str]:
     return []
 
 
-def build_pdf_engine_args(options: ConvertOptions | None, target_fmt: str) -> list[str]:
+def build_pdf_engine_args(
+    options: ConvertOptions | None,
+    target_fmt: str,
+    target_engine: str | None = None,
+) -> list[str]:
     if normalize_format(target_fmt) != "pdf":
         return []
-    engine = (options.pdf_engine if options else None) or "xelatex"
+    engine = (options.pdf_engine if options else None) or target_engine or "xelatex"
     if engine == "wkhtmltopdf":
         return ["--pdf-engine=wkhtmltopdf"]
     if engine == "typst":
@@ -92,6 +98,8 @@ def build_pdf_engine_args(options: ConvertOptions | None, target_fmt: str) -> li
 def build_citation_args(options: ConvertOptions | None, work_dir: Path) -> list[str]:
     if not options or not options.citations:
         return []
+    if len(options.citations.bib.encode("utf-8")) > MAX_JOB_BYTES:
+        raise HTTPException(status_code=400, detail="Bibliography exceeds size limit")
     bib_path = work_dir / "references.bib"
     bib_path.write_text(options.citations.bib, encoding="utf-8")
     csl_key = options.citations.csl_style.lower()
@@ -128,14 +136,22 @@ def build_command(job: ConvertJob, work_dir: Path) -> tuple[list[str], Path]:
 
     input_path = work_dir / f"input{OUTPUT_EXT.get(src_fmt, '.txt')}"
     output_path = work_dir / f"output{OUTPUT_EXT.get(tgt_fmt, '.out')}"
-    input_path.write_text(job.source.content, encoding="utf-8")
+
+    source_bytes = _decode_source_content(job.source.content, src_fmt)
+    if len(source_bytes) > MAX_JOB_BYTES:
+        raise HTTPException(status_code=400, detail="Source content exceeds size limit")
+    if _is_binary_format(src_fmt):
+        input_path.write_bytes(source_bytes)
+    else:
+        input_path.write_bytes(source_bytes)
 
     if job.assets:
         for asset in job.assets:
-            raw = base64.b64decode(asset.content_base64)
+            raw = _decode_base64(asset.content_base64, "asset")
             if len(raw) > MAX_JOB_BYTES:
                 raise HTTPException(status_code=400, detail=f"Asset too large: {asset.name}")
-            (work_dir / asset.name).write_bytes(raw)
+            dest = _safe_asset_path(work_dir, asset.name)
+            dest.write_bytes(raw)
 
     cmd: list[str] = [
         PANDOC_BIN,
@@ -158,12 +174,16 @@ def build_command(job: ConvertJob, work_dir: Path) -> tuple[list[str], Path]:
     if options.number_sections:
         cmd.append("--number-sections")
     if options.template:
+        if len(options.template.encode("utf-8")) > MAX_JOB_BYTES:
+            raise HTTPException(status_code=400, detail="Template exceeds size limit")
         template_path = work_dir / "template.custom"
         template_path.write_text(options.template, encoding="utf-8")
         cmd.extend(["--template", str(template_path)])
     if options.reference_doc:
+        ref_bytes = _decode_base64(options.reference_doc, "referenceDoc")
+        if len(ref_bytes) > MAX_JOB_BYTES:
+            raise HTTPException(status_code=400, detail="Reference document exceeds size limit")
         ref_path = work_dir / "reference.docx"
-        ref_bytes = base64.b64decode(options.reference_doc)
         ref_path.write_bytes(ref_bytes)
         cmd.extend(["--reference-doc", str(ref_path)])
 
@@ -173,7 +193,7 @@ def build_command(job: ConvertJob, work_dir: Path) -> tuple[list[str], Path]:
             cmd.extend(["--lua-filter", str(filter_path)])
 
     cmd.extend(build_math_args(options.math, tgt_fmt))
-    cmd.extend(build_pdf_engine_args(options, tgt_fmt))
+    cmd.extend(build_pdf_engine_args(options, tgt_fmt, job.target.engine))
     cmd.extend(build_citation_args(options, work_dir))
 
     return cmd, output_path
@@ -234,6 +254,43 @@ def run_pandoc(job: ConvertJob) -> tuple[Path, Path, str, list[str]]:
         raise HTTPException(status_code=424, detail="424_PANDOC_FAILED: no output produced")
 
     return work_dir, output_path, display_cmd, warnings
+
+
+BINARY_FORMATS = frozenset({"docx", "odt", "epub", "json"})
+
+
+def _is_binary_format(fmt: str) -> bool:
+    return normalize_format(fmt) in BINARY_FORMATS
+
+
+def _decode_base64(data: str, field: str) -> bytes:
+    try:
+        return base64.b64decode(data, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid base64 in {field}") from exc
+
+
+def _decode_source_content(content: str, fmt: str) -> bytes:
+    if content.startswith("base64:"):
+        return _decode_base64(content[7:], "source.content")
+    if _is_binary_format(fmt):
+        try:
+            return base64.b64decode(content, validate=True)
+        except (binascii.Error, ValueError):
+            pass
+    return content.encode("utf-8")
+
+
+def _safe_asset_path(work_dir: Path, name: str) -> Path:
+    if ".." in name or name.startswith("/") or os.path.isabs(name):
+        raise HTTPException(status_code=400, detail="Invalid asset name")
+    safe_name = Path(name).name
+    if not safe_name:
+        raise HTTPException(status_code=400, detail="Invalid asset name")
+    dest = (work_dir / safe_name).resolve()
+    if not str(dest).startswith(str(work_dir.resolve()) + os.sep):
+        raise HTTPException(status_code=400, detail="Invalid asset name")
+    return dest
 
 
 def _quote(arg: str) -> str:

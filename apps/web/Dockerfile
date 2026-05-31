@@ -4,7 +4,7 @@ RUN corepack enable
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/shared-types/package.json ./packages/shared-types/
-RUN corepack prepare pnpm@10.33.3 --activate && pnpm install --frozen-lockfile || pnpm install
+RUN corepack prepare pnpm@10.33.3 --activate && pnpm install --frozen-lockfile
 
 FROM node:22-bookworm-slim AS builder
 WORKDIR /app

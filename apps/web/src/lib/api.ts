@@ -15,7 +15,14 @@ export async function convertDocument(job: ConvertJob): Promise<ConvertResult> {
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
-    throw new Error(err.detail ?? `Conversion failed (${response.status})`);
+    const detail = err.detail;
+    const message =
+      typeof detail === "string"
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map((d: { msg?: string }) => d.msg).filter(Boolean).join("; ")
+          : `Conversion failed (${response.status})`;
+    throw new Error(message);
   }
   const data = await response.json();
   return {

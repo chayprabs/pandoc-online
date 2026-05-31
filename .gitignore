@@ -41,3 +41,6 @@ QUALIFYING_CRITERIA.md
 coverage/
 playwright-report/
 test-results/
+.pytest_cache/
+*.tsbuildinfo
+.turbo/

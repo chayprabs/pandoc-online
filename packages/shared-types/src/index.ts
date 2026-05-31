@@ -83,9 +83,4 @@ export const SUPPORTED_WRITE_FORMATS = [
 
 export const CSL_STYLES = ["apa", "chicago-author-date", "ieee", "nature", "vancouver"] as const;
 
-export const ALLOWED_FILTERS = [
-  "include-files",
-  "table-columns",
-  "pagebreak",
-  "citeproc",
-] as const;
+export const ALLOWED_FILTERS = ["pagebreak"] as const;
