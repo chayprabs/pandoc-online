@@ -28,10 +28,28 @@ export async function convertDocument(job: ConvertJob): Promise<ConvertResult> {
   return {
     artifactUrl: data.artifactUrl ?? data.artifact_url,
     logUrl: data.logUrl ?? data.log_url,
+    assetsZipUrl: data.assetsZipUrl ?? data.assets_zip_url,
+    jobId: data.jobId ?? data.job_id,
     command: data.command,
     artifactName: data.artifactName ?? data.artifact_name,
     warnings: data.warnings ?? [],
   };
+}
+
+export async function fetchTemplates(): Promise<
+  { id: string; name: string; extension?: string }[]
+> {
+  const response = await fetch(`${API_BASE}/v1/templates`);
+  if (!response.ok) return [];
+  const data = await response.json();
+  return data.templates ?? [];
+}
+
+export async function fetchTemplateContent(id: string): Promise<string> {
+  const response = await fetch(`${API_BASE}/v1/templates/${id}`);
+  if (!response.ok) throw new Error("Template not found");
+  const data = await response.json();
+  return data.content;
 }
 
 export async function inspectDocument(

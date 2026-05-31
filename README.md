@@ -4,9 +4,14 @@ Convert **Markdown**, **DOCX**, **HTML**, **LaTeX**, **EPUB** and **PDF** online
 
 Free document conversion playground — paste or upload your source, pick input/output formats, then download the result. No login required.
 
+![Pandoc Online converter UI](docs/screenshots/converter-ui.svg)
+
 ## Features
 
+- **Monaco editor** — syntax-highlighted source editing with format auto-detect
 - **15+ formats** — Markdown, GFM, HTML, DOCX, ODT, LaTeX, EPUB, RST, Org, AsciiDoc, and more
+- **Inspect panel** — headings, title, and asset references before you convert
+- **Template gallery** — built-in HTML and LaTeX templates plus custom upload
 - **PDF engines** — xelatex (default), lualatex, pdflatex, wkhtmltopdf, Typst
 - **Citations** — BibTeX + CSL styles (APA, Chicago, IEEE, Nature, Vancouver)
 - **Filters** — Curated Lua filter allowlist (no arbitrary code)

@@ -52,6 +52,8 @@ class ConvertJob(BaseModel):
 class ConvertResult(BaseModel):
     artifact_url: str = Field(alias="artifactUrl")
     log_url: str = Field(alias="logUrl")
+    assets_zip_url: str | None = Field(default=None, alias="assetsZipUrl")
+    job_id: str = Field(alias="jobId")
     command: str
     artifact_name: str = Field(alias="artifactName")
     warnings: list[str] = []

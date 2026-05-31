@@ -42,6 +42,8 @@ export interface ConvertJob {
 export interface ConvertResult {
   artifactUrl: string;
   logUrl: string;
+  assetsZipUrl?: string;
+  jobId: string;
   command: string;
   artifactName: string;
   warnings: string[];

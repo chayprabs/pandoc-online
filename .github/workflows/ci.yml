@@ -26,6 +26,14 @@ jobs:
       - run: pnpm --filter @pandoc-online/web build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:8080
+      - run: pnpm --filter @pandoc-online/web exec playwright install chromium --with-deps
+      - name: E2E smoke
+        run: |
+          pnpm --filter @pandoc-online/web start &
+          npx --yes wait-on@8.0.1 -t 120000 http://127.0.0.1:3000
+          pnpm --filter @pandoc-online/web test:e2e
+        env:
+          CI: "true"
 
   worker:
     runs-on: ubuntu-latest
@@ -39,16 +47,9 @@ jobs:
       - run: python -m pytest tests -q
         working-directory: apps/worker
       - name: Install pandoc for integration
-        run: sudo apt-get update && sudo apt-get install -y pandoc
-      - name: Integration convert markdown to html
-        run: |
-          pip install uvicorn
-          uvicorn app.main:app --host 127.0.0.1 --port 8080 &
-          sleep 2
-          curl -sf http://127.0.0.1:8080/health
-          curl -sf -X POST http://127.0.0.1:8080/v1/convert \
-            -H 'Content-Type: application/json' \
-            -d '{"source":{"format":"markdown","content":"# Hi"},"target":{"format":"html"}}'
+        run: sudo apt-get update && sudo apt-get install -y pandoc pandoc-data
+      - name: Integration tests with pandoc
+        run: python -m pytest tests/test_convert_integration.py tests/test_format_matrix.py -q
         working-directory: apps/worker
 
   docker:

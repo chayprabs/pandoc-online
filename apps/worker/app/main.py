@@ -94,8 +94,28 @@ def templates() -> dict:
     if gallery_dir.exists():
         for path in sorted(gallery_dir.glob("*")):
             if path.is_file():
-                items.append({"id": path.stem, "name": path.stem.replace("-", " ").title()})
-    return {"templates": items or [{"id": "default", "name": "Default"}]}
+                items.append(
+                    {
+                        "id": path.stem,
+                        "name": path.stem.replace("-", " ").title(),
+                        "extension": path.suffix,
+                    }
+                )
+    return {"templates": items or [{"id": "default", "name": "Default", "extension": ".html"}]}
+
+
+@app.get("/v1/templates/{template_id}")
+def template_content(template_id: str) -> dict:
+    path = Path(__file__).parent / "data" / "templates" / template_id
+    if not path.exists():
+        for ext in (".html", ".tex", ".latex"):
+            candidate = Path(__file__).parent / "data" / "templates" / f"{template_id}{ext}"
+            if candidate.exists():
+                path = candidate
+                break
+    if not path.exists() or not path.is_file():
+        raise HTTPException(status_code=404, detail="Template not found")
+    return {"id": template_id, "content": path.read_text(encoding="utf-8")}
 
 
 @app.get("/v1/csl-styles")
@@ -121,6 +141,8 @@ def convert(job: ConvertJob) -> ConvertResult:
     return ConvertResult(
         artifactUrl=f"/v1/jobs/{job_id}/artifact",
         logUrl=f"/v1/jobs/{job_id}/log",
+        assetsZipUrl=f"/v1/jobs/{job_id}/assets.zip",
+        jobId=job_id,
         command=command,
         artifactName=artifact_name,
         warnings=warnings,

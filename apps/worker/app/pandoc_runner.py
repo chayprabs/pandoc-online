@@ -54,6 +54,11 @@ def validate_formats(source_fmt: str, target_fmt: str) -> None:
         raise HTTPException(status_code=400, detail=f"Unsupported source format: {source_fmt}")
     if tgt not in WRITE_FORMATS:
         raise HTTPException(status_code=400, detail=f"Unsupported target format: {target_fmt}")
+    if src == tgt and src not in {"html", "markdown", "gfm", "commonmark"}:
+        raise HTTPException(
+            status_code=400,
+            detail="400_FORMAT_UNSUPPORTED_PAIR: source and target formats are identical",
+        )
 
 
 def validate_filters(filters: list[str] | None) -> list[str]:
@@ -177,7 +182,20 @@ def build_command(job: ConvertJob, work_dir: Path) -> tuple[list[str], Path]:
         if len(options.template.encode("utf-8")) > MAX_JOB_BYTES:
             raise HTTPException(status_code=400, detail="Template exceeds size limit")
         template_path = work_dir / "template.custom"
-        template_path.write_text(options.template, encoding="utf-8")
+        if options.template.startswith("gallery:"):
+            gallery_id = options.template.removeprefix("gallery:")
+            bundled = Path(__file__).parent / "data" / "templates"
+            found = None
+            for ext in ("", ".html", ".tex", ".latex"):
+                candidate = bundled / f"{gallery_id}{ext}"
+                if candidate.is_file():
+                    found = candidate
+                    break
+            if not found:
+                raise HTTPException(status_code=400, detail=f"Unknown gallery template: {gallery_id}")
+            shutil.copy(found, template_path)
+        else:
+            template_path.write_text(options.template, encoding="utf-8")
         cmd.extend(["--template", str(template_path)])
     if options.reference_doc:
         ref_bytes = _decode_base64(options.reference_doc, "referenceDoc")

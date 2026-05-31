@@ -25,6 +25,7 @@ def test_markdown_to_html(pandoc_available):
     assert response.status_code == 200, response.text
     data = response.json()
     assert "artifactUrl" in data
+    assert "jobId" in data or "job_id" in data
     assert "pandoc" in data["command"].lower()
 
 
