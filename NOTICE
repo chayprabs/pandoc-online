@@ -1,0 +1,18 @@
+Pandoc Online
+Copyright (C) 2026 Chaitanya Prabuddha
+
+This product includes software developed by third parties:
+
+- Pandoc (GPL / open source) — https://pandoc.org/
+- TeX Live / LaTeX (various open licenses) — https://www.tug.org/texlive/
+- wkhtmltopdf (LGPL v3) — https://wkhtmltopdf.org/
+- Typst (Apache-2.0) — https://typst.app/
+- FastAPI, Starlette, Uvicorn (BSD/MIT-style licenses)
+- Next.js, React (MIT)
+- Monaco Editor (MIT)
+
+See the respective projects for full license texts. The Pandoc Online application
+source is licensed under GNU AGPL-3.0-or-later — see LICENSE file.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+See legal/TERMS.md for service terms and limitation of liability.

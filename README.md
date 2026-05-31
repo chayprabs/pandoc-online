@@ -61,7 +61,18 @@ pnpm --filter @pandoc-online/web dev
 
 ## License
 
-AGPL-3.0 — see [LICENSE](LICENSE).
+- **Software:** [GNU AGPL-3.0-or-later](LICENSE) — see also [NOTICE](NOTICE).
+- **Hosted service:** Use of the public website is subject to [Terms](legal/TERMS.md) and [Privacy Policy](legal/PRIVACY.md). See [Legal Disclaimer](legal/DISCLAIMER.md).
+
+## Legal (hosted instance)
+
+| Document | Link |
+|----------|------|
+| Terms & Conditions | [/terms](https://github.com/chayprabs/pandoc-online/blob/main/legal/TERMS.md) · live site `/terms` |
+| Privacy Policy | [/privacy](https://github.com/chayprabs/pandoc-online/blob/main/legal/PRIVACY.md) · live site `/privacy` |
+| Disclaimer | [legal/DISCLAIMER.md](legal/DISCLAIMER.md) |
+
+The service is provided **"as is"** with limitation of liability to the maximum extent permitted by law. You are responsible for your content and for verifying conversion outputs.
 
 ## Security
 
