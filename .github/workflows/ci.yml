@@ -44,12 +44,9 @@ jobs:
           python-version: "3.12"
       - run: pip install -r apps/worker/requirements.txt
       - run: pip install pytest httpx
-      - run: python -m pytest tests -q
-        working-directory: apps/worker
-      - name: Install pandoc for integration
+      - name: Install pandoc for tests
         run: sudo apt-get update && sudo apt-get install -y pandoc pandoc-data
-      - name: Integration tests with pandoc
-        run: python -m pytest tests/test_convert_integration.py tests/test_format_matrix.py -q
+      - run: python -m pytest tests -q
         working-directory: apps/worker
 
   docker:

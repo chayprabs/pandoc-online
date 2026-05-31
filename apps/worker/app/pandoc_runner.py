@@ -360,7 +360,7 @@ def inspect_source(content: str, fmt: str) -> dict:
                     headings.append({"level": level, "text": text})
                 elif block.get("t") == "Title" and not title:
                     title = _json_inlines_to_text(block["c"])
-    except (subprocess.TimeoutExpired, json.JSONDecodeError, KeyError):
+    except (subprocess.TimeoutExpired, json.JSONDecodeError, KeyError, FileNotFoundError):
         pass
 
     if not headings:
