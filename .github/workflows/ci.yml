@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile || pnpm install
+      - run: pnpm --filter @pandoc-online/shared-types build
+      - run: pnpm --filter @pandoc-online/shared-types test
+      - run: pnpm --filter @pandoc-online/web typecheck
+      - run: pnpm --filter @pandoc-online/web lint
+      - run: pnpm --filter @pandoc-online/web build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8080
+
+  worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r apps/worker/requirements.txt
+      - run: pip install pytest httpx
+      - run: python -m pytest tests -q
+        working-directory: apps/worker
+      - name: Install pandoc for integration
+        run: sudo apt-get update && sudo apt-get install -y pandoc
+      - name: Integration convert markdown to html
+        run: |
+          pip install uvicorn
+          uvicorn app.main:app --host 127.0.0.1 --port 8080 &
+          sleep 2
+          curl -sf http://127.0.0.1:8080/health
+          curl -sf -X POST http://127.0.0.1:8080/v1/convert \
+            -H 'Content-Type: application/json' \
+            -d '{"source":{"format":"markdown","content":"# Hi"},"target":{"format":"html"}}'
+        working-directory: apps/worker
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose config
+      - name: Build worker image
+        run: docker build -t pandoc-worker:test apps/worker
+
+  shell-escape-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify shell-escape disabled
+        run: |
+          ! grep -r 'shell-escape' apps/worker/app --include='*.py' | grep -v FORBIDDEN | grep -v forbidden || true
+          grep -q 'PANDOC_FORBIDDEN_ARGS' apps/worker/app/config.py
+          grep -q 'shell_escape' apps/worker/app/pandoc_runner.py
