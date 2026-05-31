@@ -34,7 +34,6 @@ READ_FORMATS = frozenset(
         "epub",
         "rst",
         "org",
-        "asciidoc",
         "mediawiki",
         "textile",
         "json",

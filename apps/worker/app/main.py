@@ -138,10 +138,11 @@ def convert(job: ConvertJob) -> ConvertResult:
     work_dir, output_path, command, warnings = run_pandoc(job)
     job_id = work_dir.name
     artifact_name = output_path.name
+    has_extra_assets = bool(job.assets)
     return ConvertResult(
         artifactUrl=f"/v1/jobs/{job_id}/artifact",
         logUrl=f"/v1/jobs/{job_id}/log",
-        assetsZipUrl=f"/v1/jobs/{job_id}/assets.zip",
+        assetsZipUrl=f"/v1/jobs/{job_id}/assets.zip" if has_extra_assets else None,
         jobId=job_id,
         command=command,
         artifactName=artifact_name,

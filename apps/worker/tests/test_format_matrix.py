@@ -7,6 +7,7 @@ client = TestClient(app)
 
 MATRIX = [
     ("markdown", "html"),
+    ("markdown", "docx"),
     ("markdown", "latex"),
     ("markdown", "rst"),
     ("markdown", "org"),
@@ -17,7 +18,6 @@ MATRIX = [
 ]
 
 OPTIONAL_MATRIX = [
-    ("markdown", "docx"),
     ("markdown", "epub"),
 ]
 

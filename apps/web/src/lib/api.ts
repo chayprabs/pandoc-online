@@ -69,9 +69,15 @@ export async function inspectDocument(
 
 export async function fetchFormats(): Promise<{ read: string; write: string[] }[]> {
   const response = await fetch(`${API_BASE}/v1/formats`);
-  if (!response.ok) return [];
+  if (!response.ok) {
+    throw new Error("Failed to load formats");
+  }
   const data = await response.json();
-  return data.formats ?? [];
+  const formats = data.formats ?? [];
+  if (!formats.length) {
+    throw new Error("No formats returned");
+  }
+  return formats;
 }
 
 export function resolveArtifactUrl(path: string): string {

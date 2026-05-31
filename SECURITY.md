@@ -12,7 +12,7 @@ Please report security issues via [GitHub Security Advisories](https://github.co
 
 ## Design notes
 
-- Pandoc is invoked with `--sandbox` and without `--shell-escape`.
+- Pandoc is invoked without `--shell-escape`. `--sandbox` is enabled only for text-safe conversions; DOCX/EPUB/PDF writers disable sandbox because Debian pandoc data files are not embedded (see `pandoc_runner._use_sandbox`).
 - Only allowlisted Lua filters may be requested.
 - Job directories are ephemeral and cleaned on a TTL.
 - Source document contents are not written to long-term application logs by design.

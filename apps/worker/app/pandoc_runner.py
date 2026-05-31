@@ -1,5 +1,6 @@
 import base64
 import binascii
+import json
 import os
 import re
 import shutil
@@ -167,8 +168,9 @@ def build_command(job: ConvertJob, work_dir: Path) -> tuple[list[str], Path]:
         tgt_fmt,
         "-o",
         str(output_path),
-        "--sandbox",
     ]
+    if _use_sandbox(src_fmt, tgt_fmt):
+        cmd.append("--sandbox")
 
     for forbidden in PANDOC_FORBIDDEN_ARGS:
         if forbidden in cmd:
@@ -292,22 +294,30 @@ def _decode_source_content(content: str, fmt: str) -> bytes:
     if content.startswith("base64:"):
         return _decode_base64(content[7:], "source.content")
     if _is_binary_format(fmt):
-        try:
-            return base64.b64decode(content, validate=True)
-        except (binascii.Error, ValueError):
-            pass
+        return _decode_base64(content, "source.content")
     return content.encode("utf-8")
 
 
+def _use_sandbox(src_fmt: str, tgt_fmt: str) -> bool:
+    """Pandoc --sandbox breaks writers that read distro data files (docx, epub, pdf)."""
+    needs_data = frozenset({"docx", "epub", "odt", "pdf"})
+    return normalize_format(tgt_fmt) not in needs_data and normalize_format(src_fmt) not in {
+        "docx",
+        "epub",
+        "odt",
+    }
+
+
 def _safe_asset_path(work_dir: Path, name: str) -> Path:
-    if ".." in name or name.startswith("/") or os.path.isabs(name):
+    normalized = name.replace("\\", "/").strip()
+    if not normalized or normalized.startswith("/") or ".." in normalized.split("/"):
         raise HTTPException(status_code=400, detail="Invalid asset name")
-    safe_name = Path(name).name
-    if not safe_name:
+    rel = Path(normalized)
+    dest = (work_dir / rel).resolve()
+    root = work_dir.resolve()
+    if dest != root and not str(dest).startswith(str(root) + os.sep):
         raise HTTPException(status_code=400, detail="Invalid asset name")
-    dest = (work_dir / safe_name).resolve()
-    if not str(dest).startswith(str(work_dir.resolve()) + os.sep):
-        raise HTTPException(status_code=400, detail="Invalid asset name")
+    dest.parent.mkdir(parents=True, exist_ok=True)
     return dest
 
 
@@ -320,16 +330,66 @@ def _quote(arg: str) -> str:
 def inspect_source(content: str, fmt: str) -> dict:
     src_fmt = normalize_format(fmt)
     validate_formats(src_fmt, "html")
+    if _is_binary_format(src_fmt):
+        return {"format": src_fmt, "title": None, "headings": [], "assets": []}
     headings: list[dict] = []
-    for line in content.splitlines():
-        match = re.match(r"^(#{1,6})\s+(.+)$", line)
-        if match:
-            headings.append({"level": len(match.group(1)), "text": match.group(2).strip()})
+    title: str | None = None
     assets = re.findall(r"!\[[^\]]*\]\(([^)]+)\)", content)
-    title_match = re.search(r"^#\s+(.+)$", content, re.MULTILINE)
+
+    try:
+        proc = subprocess.run(
+            [PANDOC_BIN, "-f", src_fmt, "-t", "json", "--quiet"],
+            input=content,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        if proc.returncode == 0 and proc.stdout:
+            doc = json.loads(proc.stdout)
+            for block in doc.get("blocks", []):
+                if block.get("t") == "Header":
+                    level, _, inlines = block["c"]
+                    text = _json_inlines_to_text(inlines)
+                    headings.append({"level": level, "text": text})
+                elif block.get("t") == "Title" and not title:
+                    title = _json_inlines_to_text(block["c"])
+    except (subprocess.TimeoutExpired, json.JSONDecodeError, KeyError):
+        pass
+
+    if not headings:
+        for line in content.splitlines():
+            match = re.match(r"^(#{1,6})\s+(.+)$", line)
+            if match:
+                headings.append({"level": len(match.group(1)), "text": match.group(2).strip()})
+    if not title:
+        rst_title = re.match(r"^(.+)\n=+\s*$", content, re.MULTILINE)
+        if rst_title:
+            title = rst_title.group(1).strip()
+
+    if not title:
+        title_match = re.search(r"^#\s+(.+)$", content, re.MULTILINE)
+        if title_match:
+            title = title_match.group(1).strip()
+
     return {
         "format": src_fmt,
-        "title": title_match.group(1).strip() if title_match else None,
+        "title": title,
         "headings": headings,
         "assets": assets,
     }
+
+
+def _json_inlines_to_text(inlines: list) -> str:
+    parts: list[str] = []
+    for item in inlines:
+        if isinstance(item, dict) and "t" in item:
+            tag = item["t"]
+            val = item.get("c", "")
+            if tag == "Str":
+                parts.append(str(val))
+            elif tag == "Space":
+                parts.append(" ")
+        elif isinstance(item, list) and len(item) >= 2 and item[0] == "Str":
+            parts.append(str(item[1]))
+    return "".join(parts).strip()

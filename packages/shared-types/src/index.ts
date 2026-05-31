@@ -72,7 +72,6 @@ export const SUPPORTED_READ_FORMATS = [
   "epub",
   "rst",
   "org",
-  "asciidoc",
   "mediawiki",
   "textile",
   "json",

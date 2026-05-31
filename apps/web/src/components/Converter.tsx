@@ -5,6 +5,35 @@ import { ALLOWED_FILTERS, CSL_STYLES } from "@pandoc-online/shared-types";
 import { FileDrop, ResultTabs, SamplePicker } from "@pandoc-online/shared-ui";
 import { Copy, Download, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
+const FALLBACK_READ = [
+  "markdown",
+  "gfm",
+  "commonmark",
+  "html",
+  "docx",
+  "odt",
+  "latex",
+  "epub",
+  "rst",
+  "org",
+  "mediawiki",
+  "textile",
+  "json",
+];
+
+function isValidBase64(value: string): boolean {
+  const raw = value.startsWith("base64:") ? value.slice(7) : value;
+  if (!raw.trim()) return false;
+  try {
+    if (typeof atob !== "undefined") {
+      atob(raw.replace(/\s/g, "").slice(0, 64));
+    }
+    return /^[A-Za-z0-9+/]+=*$/.test(raw.replace(/\s/g, ""));
+  } catch {
+    return false;
+  }
+}
 import { BIB_SAMPLE, BUILTIN_SAMPLES } from "@/data/samples";
 import {
   convertDocument,
@@ -88,34 +117,18 @@ export function Converter({
   const [templates, setTemplates] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
+    const applyFallback = () => {
+      setReadFormats(FALLBACK_READ);
+      setWriteFormats([...FALLBACK_READ, "pdf"]);
+    };
     fetchFormats()
       .then((matrix) => {
-        if (!matrix.length) return;
         const reads = matrix.map((m) => m.read);
         const writes = [...new Set(matrix.flatMap((m) => m.write))].sort();
         setReadFormats(reads);
         setWriteFormats(writes);
       })
-      .catch(() => {
-        const fallback = [
-          "markdown",
-          "gfm",
-          "commonmark",
-          "html",
-          "docx",
-          "odt",
-          "latex",
-          "epub",
-          "rst",
-          "org",
-          "asciidoc",
-          "mediawiki",
-          "textile",
-          "json",
-        ];
-        setReadFormats(fallback);
-        setWriteFormats([...fallback, "pdf"]);
-      });
+      .catch(applyFallback);
     fetchTemplates()
       .then(setTemplates)
       .catch(() => undefined);
@@ -158,11 +171,19 @@ export function Converter({
     return () => clearTimeout(t);
   }, [runInspect]);
 
+  const canConvert = useMemo(() => {
+    if (!content.trim()) return false;
+    if (isBinarySource) return isValidBase64(content);
+    return true;
+  }, [content, isBinarySource]);
+
   const handleConvert = async () => {
     setLoading(true);
     setError(null);
     setArtifactUrl(null);
     setPreviewHtml(null);
+    setLogUrl(null);
+    setAssetsZipUrl(null);
     setCommand("");
     setWarnings([]);
     try {
@@ -199,7 +220,9 @@ export function Converter({
       const artUrl = resolveArtifactUrl(result.artifactUrl);
       setArtifactUrl(artUrl);
       setLogUrl(resolveArtifactUrl(result.logUrl));
-      if (result.assetsZipUrl) setAssetsZipUrl(resolveArtifactUrl(result.assetsZipUrl));
+      if (result.assetsZipUrl && assets.length > 0) {
+        setAssetsZipUrl(resolveArtifactUrl(result.assetsZipUrl));
+      }
       setWarnings(result.warnings);
       if (targetFormat === "html" && !isBinarySource) {
         try {
@@ -233,8 +256,18 @@ export function Converter({
             <select
               value={sourceFormat}
               onChange={(e) => {
-                setSourceFormat(e.target.value);
-                setIsBinarySource(BINARY_FORMATS.has(e.target.value));
+                const fmt = e.target.value;
+                const binary = BINARY_FORMATS.has(fmt);
+                if (binary) {
+                  setIsBinarySource(true);
+                  setContent("");
+                } else if (isBinarySource) {
+                  setIsBinarySource(false);
+                  setContent(BUILTIN_SAMPLES[0].content);
+                } else {
+                  setIsBinarySource(false);
+                }
+                setSourceFormat(fmt);
               }}
               className="rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm"
             >
@@ -467,7 +500,7 @@ export function Converter({
         <button
           type="button"
           onClick={() => void handleConvert()}
-          disabled={loading || !content.trim()}
+          disabled={loading || !canConvert}
           className="flex items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white hover:bg-[var(--accent-hover)] disabled:opacity-50"
         >
           {loading ? (

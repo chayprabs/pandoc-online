@@ -48,6 +48,19 @@ We used Pandoc for conversion.
 `,
   },
   {
+    id: "rst",
+    label: "RST doc",
+    format: "rst",
+    content: `Title
+=====
+
+Section
+-------
+
+Body text.
+`,
+  },
+  {
     id: "latex",
     label: "LaTeX article",
     format: "latex",
