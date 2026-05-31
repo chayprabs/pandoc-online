@@ -1,0 +1,16 @@
+services:
+  pandoc-online:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        API_URL: http://worker:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - worker
+  worker:
+    build:
+      context: ./apps/worker
+    expose:
+      - "8080"

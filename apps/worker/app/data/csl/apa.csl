@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<style xmlns="http://purl.org/net/xbiblio/csl" class="in-text" version="1.0">
+  <info><title>APA</title></info>
+  <citation><layout suffix=")" prefix="(" delimiter="; "><text variable="author"/><text variable="year"/></layout></citation>
+  <bibliography><layout><text variable="citation-number" suffix=". "/><text variable="title"/></layout></bibliography>
+</style>
