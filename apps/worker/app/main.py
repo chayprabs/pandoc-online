@@ -179,22 +179,26 @@ def download_log(job_id: str) -> FileResponse:
 
 @app.get("/v1/jobs/{job_id}/assets.zip")
 def download_assets_zip(job_id: str) -> FileResponse:
+    import json
     import zipfile
 
     work_dir = JOB_ROOT / job_id
     if not work_dir.exists():
         raise HTTPException(status_code=404, detail="Job not found")
+    manifest_path = work_dir / ".asset_manifest"
+    if not manifest_path.exists():
+        raise HTTPException(status_code=404, detail="No uploaded assets for this job")
+    rel_paths: list[str] = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not rel_paths:
+        raise HTTPException(status_code=404, detail="No uploaded assets for this job")
     zip_path = work_dir / "assets.zip"
     with zipfile.ZipFile(zip_path, "w") as zf:
-        for asset in work_dir.iterdir():
-            if asset.name.startswith("output.") or asset.name in {
-                "input.md",
-                "conversion.log",
-                "assets.zip",
-            }:
+        for rel in rel_paths:
+            file_path = (work_dir / rel).resolve()
+            if not str(file_path).startswith(str(work_dir.resolve()) + os.sep):
                 continue
-            if asset.is_file():
-                zf.write(asset, arcname=asset.name)
+            if file_path.is_file():
+                zf.write(file_path, arcname=rel.replace("\\", "/"))
     return FileResponse(zip_path, filename="assets.zip", media_type="application/zip")
 
 

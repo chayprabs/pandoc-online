@@ -14,6 +14,53 @@ PNG_1X1 = base64.b64encode(
 ).decode()
 
 
+def test_assets_zip_contains_nested_uploads():
+    import shutil
+    import zipfile
+
+    if not shutil.which("pandoc"):
+        import pytest
+
+        pytest.skip("pandoc not installed")
+    response = client.post(
+        "/v1/convert",
+        json={
+            "source": {"format": "markdown", "content": "![x](sub/img.png)"},
+            "target": {"format": "html"},
+            "assets": [{"name": "sub/img.png", "contentBase64": PNG_1X1}],
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data.get("assetsZipUrl")
+    zip_resp = client.get(data["assetsZipUrl"])
+    assert zip_resp.status_code == 200
+    import io
+
+    zf = zipfile.ZipFile(io.BytesIO(zip_resp.content))
+    assert "sub/img.png" in zf.namelist()
+
+
+def test_assets_zip_404_without_uploads():
+    import shutil
+
+    if not shutil.which("pandoc"):
+        import pytest
+
+        pytest.skip("pandoc not installed")
+    response = client.post(
+        "/v1/convert",
+        json={
+            "source": {"format": "markdown", "content": "# only"},
+            "target": {"format": "html"},
+        },
+    )
+    assert response.status_code == 200
+    job_id = response.json()["jobId"]
+    zip_resp = client.get(f"/v1/jobs/{job_id}/assets.zip")
+    assert zip_resp.status_code == 404
+
+
 def test_nested_asset_path():
     import shutil
 

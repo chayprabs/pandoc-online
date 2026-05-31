@@ -70,7 +70,6 @@ function detectFormat(filename: string, content: string): string {
     epub: "epub",
     rst: "rst",
     org: "org",
-    adoc: "asciidoc",
     wiki: "mediawiki",
     json: "json",
   };
@@ -224,7 +223,7 @@ export function Converter({
         setAssetsZipUrl(resolveArtifactUrl(result.assetsZipUrl));
       }
       setWarnings(result.warnings);
-      if (targetFormat === "html" && !isBinarySource) {
+      if (targetFormat === "html") {
         try {
           const res = await fetch(artUrl);
           if (res.ok) setPreviewHtml(await res.text());

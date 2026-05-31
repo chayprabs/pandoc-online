@@ -31,7 +31,6 @@ TEXT_SAMPLES: dict[str, str] = {
     "latex": r"\documentclass{article}\begin{document}Hello\end{document}",
     "rst": "Title\n=====\n\nBody text.",
     "org": "* Title\n\nBody.",
-    "asciidoc": "= Title\n\nBody.",
     "mediawiki": "== Title ==\n\nBody.",
     "textile": "h1. Title\n\nBody.",
     "json": json.dumps(
@@ -69,7 +68,6 @@ READ_FORMATS = [
     "epub",
     "rst",
     "org",
-    "asciidoc",
     "mediawiki",
     "textile",
     "json",

@@ -151,6 +151,7 @@ def build_command(job: ConvertJob, work_dir: Path) -> tuple[list[str], Path]:
     else:
         input_path.write_bytes(source_bytes)
 
+    uploaded_assets: list[str] = []
     if job.assets:
         for asset in job.assets:
             raw = _decode_base64(asset.content_base64, "asset")
@@ -158,6 +159,8 @@ def build_command(job: ConvertJob, work_dir: Path) -> tuple[list[str], Path]:
                 raise HTTPException(status_code=400, detail=f"Asset too large: {asset.name}")
             dest = _safe_asset_path(work_dir, asset.name)
             dest.write_bytes(raw)
+            uploaded_assets.append(str(dest.relative_to(work_dir)))
+        (work_dir / ".asset_manifest").write_text(json.dumps(uploaded_assets), encoding="utf-8")
 
     cmd: list[str] = [
         PANDOC_BIN,
@@ -276,7 +279,7 @@ def run_pandoc(job: ConvertJob) -> tuple[Path, Path, str, list[str]]:
     return work_dir, output_path, display_cmd, warnings
 
 
-BINARY_FORMATS = frozenset({"docx", "odt", "epub", "json"})
+BINARY_FORMATS = frozenset({"docx", "odt", "epub"})
 
 
 def _is_binary_format(fmt: str) -> bool:
@@ -335,6 +338,9 @@ def inspect_source(content: str, fmt: str) -> dict:
     headings: list[dict] = []
     title: str | None = None
     assets = re.findall(r"!\[[^\]]*\]\(([^)]+)\)", content)
+    assets += re.findall(r'<img[^>]+src=["\']([^"\']+)["\']', content, re.IGNORECASE)
+    assets += re.findall(r"\.\.\s+image::\s*(\S+)", content)
+    assets += re.findall(r"\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}", content)
 
     try:
         proc = subprocess.run(
